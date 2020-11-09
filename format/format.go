@@ -3,7 +3,6 @@ package format
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 )
 
 type CryptoFormat interface {
@@ -25,7 +24,7 @@ func (this *Base64Format) Decode(ciphertext string) ([]byte, error) {
 }
 
 func (this *HexFormat) Encode(ciphertext []byte) string {
-	return fmt.Sprintf("%X", ciphertext)
+	return hex.EncodeToString(ciphertext)
 }
 func (this *HexFormat) Decode(ciphertext string) ([]byte, error) {
 	return hex.DecodeString(ciphertext)

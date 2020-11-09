@@ -11,25 +11,25 @@ import (
 	"os"
 )
 
-func MD5(text []byte) string {
+func Md5(text []byte) string {
 	hash := md5.New()
 	hash.Write(text)
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func SHA256(text []byte) string {
+func Sha256(text []byte) string {
 	hash := sha256.New()
 	hash.Write(text)
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func SHA512(text []byte) string {
+func Sha512(text []byte) string {
 	hash := sha512.New()
 	hash.Write(text)
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func FileMD5(file io.Reader) string {
+func FileMd5(file io.Reader) string {
 	hash := md5.New()
 	_, err := io.Copy(hash, file)
 	if err != nil {
@@ -38,7 +38,7 @@ func FileMD5(file io.Reader) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func FileSHA256(filename string) string {
+func FileSha256(filename string) string {
 	h := sha256.New()
 
 	f, err := os.Open(filename)
@@ -52,7 +52,6 @@ func FileSHA256(filename string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// HmacValue ...
 func Hmac(data []byte, hmacKey []byte) string {
 	hash := hmac.New(sha512.New, hmacKey[:])
 	hash.Write(data)
