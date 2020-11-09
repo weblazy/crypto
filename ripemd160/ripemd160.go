@@ -1,4 +1,4 @@
-package main
+package ripemd160
 
 import (
 	"fmt"
