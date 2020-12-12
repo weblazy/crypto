@@ -12,7 +12,63 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+
+	"golang.org/x/crypto/pkcs12"
 )
+
+// @desc PrivateKey
+// @auth liuguoqiang 2020-11-07
+// @param
+// @return
+type PrivateKey struct {
+	privateKey *rsa.PrivateKey
+}
+
+// @desc NewPrivateKey
+// @auth liuguoqiang 2020-11-07
+// @param
+// @return
+func NewPrivateKey(privateKey string) *PrivateKey {
+	//解码pem格式的私钥，得到公钥的载体block
+	block, _ := pem.Decode([]byte(privateKey))
+	if block == nil {
+		fmt.Printf("%#v\n", errors.New("private key error!"))
+		return nil
+	}
+	//解析得到PKCS1格式的私钥
+	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+		return nil
+	}
+	return &PrivateKey{
+		privateKey: priv,
+	}
+}
+
+// @desc  解密PKCS12,读取解析pfx文件
+// @auth liuguoqiang 2020-11-08
+// @param
+// @return
+func NewPrivateKeyWithPKCS12(pfxData []byte, password string) *PrivateKey {
+	privateKey, _, err := pkcs12.Decode(pfxData, password)
+	if err != nil {
+		return nil
+	}
+	return &PrivateKey{
+		privateKey: privateKey.(*rsa.PrivateKey),
+	}
+}
+
+// @desc 获取私钥中的PublicKey
+// @auth liuguoqiang 2020-11-08
+// @param
+// @return
+func (this *PrivateKey) GetPublicKey() *PublicKey {
+	return &PublicKey{
+		publicKey: &this.privateKey.PublicKey,
+	}
+}
 
 // @desc publickey
 // @auth liuguoqiang 2020-11-07
@@ -43,36 +99,6 @@ func NewPublicKey(publicKey string) *PublicKey {
 	pub := pubInterface.(*rsa.PublicKey)
 	return &PublicKey{
 		publicKey: pub,
-	}
-}
-
-// @desc PrivateKey
-// @auth liuguoqiang 2020-11-07
-// @param
-// @return
-type PrivateKey struct {
-	privateKey *rsa.PrivateKey
-}
-
-// @desc NewPrivateKey
-// @auth liuguoqiang 2020-11-07
-// @param
-// @return
-func NewPrivateKey(privateKey string) *PrivateKey {
-	//解码pem格式的私钥，得到公钥的载体block
-	block, _ := pem.Decode([]byte(privateKey))
-	if block == nil {
-		fmt.Printf("%#v\n", errors.New("private key error!"))
-		return nil
-	}
-	//解析得到PKCS1格式的私钥
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		fmt.Printf("%#v\n", err)
-		return nil
-	}
-	return &PrivateKey{
-		privateKey: priv,
 	}
 }
 
@@ -178,8 +204,8 @@ func (this *PublicKey) Verify(text, sign []byte) bool {
 // @auth liuguoqiang 2020-11-08
 // @param
 // @return
-func (this *PublicKey) Encrypt(origData []byte) ([]byte, error) {
-	return rsa.EncryptPKCS1v15(rand.Reader, this.publicKey, origData)
+func (this *PublicKey) Encrypt(plaintext []byte) ([]byte, error) {
+	return rsa.EncryptPKCS1v15(rand.Reader, this.publicKey, plaintext)
 }
 
 // @desc  解密
@@ -188,4 +214,24 @@ func (this *PublicKey) Encrypt(origData []byte) ([]byte, error) {
 // @return
 func (this *PrivateKey) Decrypt(ciphertext []byte) ([]byte, error) {
 	return rsa.DecryptPKCS1v15(rand.Reader, this.privateKey, ciphertext)
+}
+
+// @desc  解密NoPadding
+// @auth liuguoqiang 2020-11-08
+// @param
+// @return
+func (this *PrivateKey) DecryptWithNoPadding(ciphertext []byte) ([]byte, error) {
+	bigInt := new(big.Int).SetBytes(ciphertext)
+	resp := bigInt.Exp(bigInt, this.privateKey.D, this.privateKey.N).Bytes()
+	return resp, nil
+}
+
+// @desc  加密NoPadding
+// @auth liuguoqiang 2020-11-08
+// @param
+// @return
+func (this *PublicKey) EncryptWithNoPadding(plaintext []byte) ([]byte, error) {
+	bigInt := new(big.Int).SetBytes(plaintext)
+	resp := bigInt.Exp(bigInt, big.NewInt(int64(this.publicKey.E)), this.publicKey.N).Bytes()
+	return resp, nil
 }
