@@ -28,7 +28,7 @@ type PrivateKey struct {
 // @auth liuguoqiang 2020-11-07
 // @param
 // @return
-func NewPrivateKey(privateKey string) *PrivateKey {
+func ParsePKCS1PrivateKey(privateKey string) *PrivateKey {
 	//解码pem格式的私钥，得到公钥的载体block
 	block, _ := pem.Decode([]byte(privateKey))
 	if block == nil {
@@ -46,11 +46,33 @@ func NewPrivateKey(privateKey string) *PrivateKey {
 	}
 }
 
+// @desc NewPrivateKey
+// @auth liuguoqiang 2020-11-07
+// @param
+// @return
+func ParsePKCS8PrivateKey(privateKey string) *PrivateKey {
+	//解码pem格式的私钥，得到公钥的载体block
+	block, _ := pem.Decode([]byte(privateKey))
+	if block == nil {
+		fmt.Printf("%#v\n", errors.New("private key error!"))
+		return nil
+	}
+	//解析得到PKCS1格式的私钥
+	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+		return nil
+	}
+	return &PrivateKey{
+		privateKey: priv.(*rsa.PrivateKey),
+	}
+}
+
 // @desc  解密PKCS12,读取解析pfx文件
 // @auth liuguoqiang 2020-11-08
 // @param
 // @return
-func NewPrivateKeyWithPKCS12(pfxData []byte, password string) *PrivateKey {
+func ParsePKCS12PrivateKey(pfxData []byte, password string) *PrivateKey {
 	privateKey, _, err := pkcs12.Decode(pfxData, password)
 	if err != nil {
 		return nil
@@ -82,7 +104,29 @@ type PublicKey struct {
 // @auth liuguoqiang 2020-11-07
 // @param
 // @return
-func NewPublicKey(publicKey string) *PublicKey {
+func ParsePkCS1PublicKey(publicKey string) *PublicKey {
+	//解码pem格式的公钥，得到公钥的载体block
+	block, _ := pem.Decode([]byte(publicKey))
+	if block == nil {
+		fmt.Printf("%#v\n", errors.New("public key error"))
+		return nil
+	}
+	// 解析得到公钥
+	pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+		return nil
+	}
+	return &PublicKey{
+		publicKey: pub,
+	}
+}
+
+// @desc NewPublicKey
+// @auth liuguoqiang 2020-11-07
+// @param
+// @return
+func ParsePKCS8PublicKey(publicKey string) *PublicKey {
 	//解码pem格式的公钥，得到公钥的载体block
 	block, _ := pem.Decode([]byte(publicKey))
 	if block == nil {
@@ -143,7 +187,7 @@ func SetEN(exp, mod string) *rsa.PublicKey {
 	}
 }
 
-func (this *PrivateKey) SetPrivateKeyToPem() string {
+func (this *PrivateKey) MarshalPKCS1PrivateKeyToPem() string {
 	stream := x509.MarshalPKCS1PrivateKey(this.privateKey)
 	block := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
@@ -158,7 +202,7 @@ func (this *PrivateKey) SetPrivateKeyToPem() string {
 	return buf.String()
 }
 
-func (this *PublicKey) SetPublicKeyToPem() string {
+func (this *PublicKey) MarshalPKCS1PublicKeyToPem() string {
 	stream := x509.MarshalPKCS1PublicKey(this.publicKey)
 	block := &pem.Block{
 		Type:  "RSA PUBLIC KEY",
@@ -166,6 +210,42 @@ func (this *PublicKey) SetPublicKeyToPem() string {
 	}
 	var buf bytes.Buffer
 	err := pem.Encode(&buf, block)
+	if err != nil {
+		return ""
+	}
+	return buf.String()
+}
+
+func (this *PrivateKey) MarshalPKCS8PrivateKeyToPem() string {
+	stream, err := x509.MarshalPKCS8PrivateKey(this.privateKey)
+	if err != nil {
+		return ""
+	}
+
+	block := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: stream,
+	}
+
+	var buf bytes.Buffer
+	err = pem.Encode(&buf, block)
+	if err != nil {
+		return ""
+	}
+	return buf.String()
+}
+
+func (this *PublicKey) MarshalPKCS8PublicKeyToPem() string {
+	stream, err := x509.MarshalPKIXPublicKey(this.publicKey)
+	if err != nil {
+		return ""
+	}
+	block := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: stream,
+	}
+	var buf bytes.Buffer
+	err = pem.Encode(&buf, block)
 	if err != nil {
 		return ""
 	}
